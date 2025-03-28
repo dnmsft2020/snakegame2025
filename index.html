@@ -97,25 +97,25 @@
             max-height: 600px;
         }
 
-        .high-scores-container {
+        .high-scores {
+            max-height: 300px;
             overflow-y: auto;
-            flex: 1;
-            padding-right: 0.5rem;
+            padding-right: 10px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent-color) transparent;
         }
 
-        /* Styling the scrollbar */
-        .high-scores-container::-webkit-scrollbar {
-            width: 8px;
+        .high-scores::-webkit-scrollbar {
+            width: 6px;
         }
 
-        .high-scores-container::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
+        .high-scores::-webkit-scrollbar-track {
+            background: transparent;
         }
 
-        .high-scores-container::-webkit-scrollbar-thumb {
-            background: var(--accent-color);
-            border-radius: 4px;
+        .high-scores::-webkit-scrollbar-thumb {
+            background-color: var(--accent-color);
+            border-radius: 3px;
         }
 
         .player-count {
@@ -158,14 +158,14 @@
         .settings-row {
             display: flex;
             gap: 1rem;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
         }
 
         .settings-group {
             display: flex;
-            align-items: center;
+            flex-direction: column;
             gap: 0.5rem;
             margin: 0;
             background: none;
@@ -173,10 +173,18 @@
             width: auto;
         }
 
-        .settings-group label {
-            margin: 0;
-            white-space: nowrap;
-            color: var(--secondary-color);
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .help-text {
+            display: block;
+            color: var(--accent-color);
+            font-size: 0.8em;
+            opacity: 0.8;
+            text-align: center;
         }
 
         select, input {
@@ -285,17 +293,22 @@
             <div class="game-section">
                 <div class="settings-row">
                     <div class="settings-group">
-                        <label>Username:</label>
-                        <input type="text" id="username" value="">
+                        <div class="input-row">
+                            <label>Player:</label>
+                            <input type="text" id="username" value="">
+                        </div>
+                        <small class="help-text">Change to any name you like!</small>
                     </div>
                     
                     <div class="settings-group">
-                        <label>Level:</label>
-                        <select id="speedSelect">
-                            <option value="slow">Easy (x1)</option>
-                            <option value="medium" selected>Medium (x1.5)</option>
-                            <option value="fast">Hard (x2)</option>
-                        </select>
+                        <div class="input-row">
+                            <label>Level:</label>
+                            <select id="speedSelect">
+                                <option value="slow">Easy (x1)</option>
+                                <option value="medium" selected>Medium (x1.5)</option>
+                                <option value="fast">Hard (x2)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 
@@ -314,9 +327,7 @@
             <div class="info-section">
                 <h3>High Scores</h3>
                 <div class="player-count">Total Players: <span id="playerCount">0</span></div>
-                <div class="high-scores-container">
-                    <div id="highScoresList"></div>
-                </div>
+                <div id="highScoresList" class="high-scores"></div>
             </div>
         </div>
     </main>
@@ -352,7 +363,7 @@
         const gameData = new GameDataManager();
         
         // Set initial random username
-        document.getElementById('username').value = gameData.generateRandomPlayerName();
+        document.getElementById('username').value = gameData.generateRandomPlayerName().replace('Player ', '');
 
         function updatePlayerCount() {
             document.getElementById('playerCount').textContent = gameData.getTotalPlayers();
@@ -405,6 +416,39 @@
             document.getElementById('scoreValue').textContent = score;
         }
         
+        async function handleGameOver() {
+            isGameOver = true;
+            clearInterval(gameInterval);
+            gameInterval = null;
+            
+            // Save score with "Player" prefix
+            const username = 'Player ' + document.getElementById('username').value.trim();
+            const difficulty = document.getElementById('speedSelect').value;
+            const finalScore = await gameData.addScore(username, score, difficulty);
+            
+            // Update displays
+            updateHighScoresList();
+            updatePlayerCount();
+            updateActionButton();
+        }
+        
+        async function updateHighScoresList() {
+            const topScores = await gameData.getTopScores(100); // Get up to 100 scores
+            const highScoresList = document.getElementById('highScoresList');
+            highScoresList.innerHTML = '';
+            
+            topScores.forEach((score, index) => {
+                const li = document.createElement('div');
+                li.className = 'score-entry';
+                const date = new Date(score.timestamp).toLocaleDateString();
+                li.innerHTML = `
+                    ${index + 1}. ${score.username}: ${score.finalScore} points
+                    <br><small>(${score.difficulty} mode - ${date})</small>
+                `;
+                highScoresList.appendChild(li);
+            });
+        }
+        
         function update() {
             if (isPaused || isGameOver) return;
             
@@ -422,16 +466,7 @@
             if (newHead.x < 0 || newHead.x >= gridSize || 
                 newHead.y < 0 || newHead.y >= gridSize ||
                 snake.some(segment => segment.x === newHead.x && segment.y === newHead.y)) {
-                isGameOver = true;
-                clearInterval(gameInterval);
-                gameInterval = null;
-                drawGame();
-                
-                // Save score
-                const username = document.getElementById('username').value || 'Player';
-                const difficulty = document.getElementById('speedSelect').value;
-                gameData.addScore(username, score, difficulty);
-                updateHighScoresList();
+                handleGameOver();
                 return;
             }
             
@@ -469,21 +504,6 @@
                 currentSpeed = speeds[document.getElementById('speedSelect').value];
                 gameInterval = setInterval(update, currentSpeed);
             }
-        }
-        
-        function updateHighScoresList() {
-            const highScoresList = document.getElementById('highScoresList');
-            const topScores = gameData.getTopScores(5);
-            
-            highScoresList.innerHTML = topScores
-                .map((score, index) => `
-                    <div class="score-entry">
-                        ${index + 1}. ${score.username}: ${score.finalScore} points
-                        <br><small>(${score.difficulty} mode - Raw: ${score.rawScore})</small>
-                    </div>
-                `).join('');
-            
-            updatePlayerCount();
         }
         
         // Update action button text
@@ -540,7 +560,7 @@
         
         // Initialize game
         initializeGame();
-        updateHighScoresList();
+        updateHighScoresList().catch(console.error);
         updateActionButton();
     </script>
 </body>

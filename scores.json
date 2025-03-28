@@ -1,0 +1,25 @@
+{
+    "scores": [
+        {
+            "username": "Player RedStar",
+            "rawScore": 50,
+            "finalScore": 100,
+            "difficulty": "fast",
+            "timestamp": "2025-03-28T13:31:21-07:00"
+        },
+        {
+            "username": "Player BlueMoon",
+            "rawScore": 40,
+            "finalScore": 60,
+            "difficulty": "medium",
+            "timestamp": "2025-03-28T13:30:00-07:00"
+        },
+        {
+            "username": "Player GreenLeaf",
+            "rawScore": 30,
+            "finalScore": 30,
+            "difficulty": "slow",
+            "timestamp": "2025-03-28T13:29:00-07:00"
+        }
+    ]
+}
