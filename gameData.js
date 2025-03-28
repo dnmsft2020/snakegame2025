@@ -3,9 +3,6 @@ class GameDataManager {
         this.scores = [];
         this.colors = ['Red', 'Green', 'Blue', 'Purple', 'Orange', 'Yellow', 'Pink', 'Cyan', 'Lime', 'Teal'];
         this.objects = ['Box', 'Star', 'Leaf', 'Circle', 'Heart', 'Diamond', 'Cloud', 'Wave', 'Sun', 'Moon'];
-        this.apiBaseUrl = window.location.hostname === 'localhost' 
-            ? 'http://localhost:3000/api'
-            : '/api'; // Will use relative path in production
         
         // Load initial scores
         this.loadScores();
@@ -16,48 +13,28 @@ class GameDataManager {
 
     async loadScores() {
         try {
-            const response = await fetch(`${this.apiBaseUrl}/scores`);
-            if (!response.ok) throw new Error('Failed to fetch scores');
-            
+            console.log('Loading scores...');
+            const response = await fetch('scores_handler.php');
             const data = await response.json();
-            this.scores = data.scores || [];
-            this.scores.sort((a, b) => b.finalScore - a.finalScore);
             
-            // Update UI if the updateHighScoresList function exists
-            if (typeof updateHighScoresList === 'function') {
-                updateHighScoresList();
+            if (data.success) {
+                this.scores = data.scores;
+                this.updateUI();
+                console.log('Scores loaded successfully');
+            } else {
+                console.error('Error loading scores:', data.error);
             }
         } catch (error) {
-            console.error('Error loading scores:', error);
+            console.error('Failed to load scores:', error);
         }
     }
 
-    async saveScore(username, rawScore, finalScore, difficulty) {
-        try {
-            const response = await fetch(`${this.apiBaseUrl}/scores`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    username,
-                    rawScore,
-                    finalScore,
-                    difficulty
-                })
-            });
-
-            if (!response.ok) throw new Error('Failed to save score');
-            
-            const result = await response.json();
-            if (result.success) {
-                this.scores = result.scores;
-                return true;
-            }
-            return false;
-        } catch (error) {
-            console.error('Error saving score:', error);
-            return false;
+    updateUI() {
+        if (typeof updateHighScoresList === 'function') {
+            updateHighScoresList();
+        }
+        if (typeof updatePlayerCount === 'function') {
+            updatePlayerCount();
         }
     }
 
@@ -81,8 +58,33 @@ class GameDataManager {
         
         const finalScore = Math.round(score * multipliers[difficulty]);
         
-        // Save to server
-        await this.saveScore(username, score, finalScore, difficulty);
+        try {
+            console.log('Saving score...');
+            const response = await fetch('scores_handler.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username,
+                    rawScore: score,
+                    finalScore,
+                    difficulty
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                this.scores = data.scores;
+                this.updateUI();
+                console.log('Score saved successfully');
+            } else {
+                console.error('Error saving score:', data.error);
+            }
+        } catch (error) {
+            console.error('Failed to save score:', error);
+        }
+        
         return finalScore;
     }
 

@@ -1,6 +1,6 @@
-# Snake Game with Online Scores
+# Snake Game with Score Tracking
 
-A web-based Snake Game with real-time score tracking and leaderboard functionality.
+A web-based Snake Game with persistent score tracking using a simple file-based system.
 
 ## Features
 - Classic snake gameplay with multiple difficulty levels
@@ -11,59 +11,20 @@ A web-based Snake Game with real-time score tracking and leaderboard functionali
 
 ## Setup
 
-### Local Development
-1. Install Node.js and npm
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-4. Open `http://localhost:3000` in your browser
+### Requirements
+- Any web server with PHP support (Apache, Nginx, etc.)
+- No database required!
 
-### Production Deployment
+### Installation
 1. Upload all files to your web server
-2. Install Node.js dependencies:
-   ```bash
-   npm install --production
-   ```
-3. Start the server:
-   ```bash
-   npm start
-   ```
-4. Configure your web server (Apache/Nginx) to proxy requests to Node.js
-
-### Server Configuration Example (Nginx)
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    location / {
-        root /path/to/snake-game;
-        index index.html;
-        try_files $uri $uri/ =404;
-    }
-
-    location /api {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
+2. Make sure the directory has write permissions for scores.json
+3. Access the game through your web browser
 
 ## File Structure
 - `index.html` - Main game interface
 - `gameData.js` - Score management and game data handling
-- `server.js` - Node.js server for score handling
-- `scores.json` - Score storage file
-- `package.json` - Project dependencies and scripts
+- `scores_handler.php` - Simple PHP score handler
+- `scores.json` - Score storage file (created automatically)
 
 ## Score System
 - Scores are automatically saved when games end
@@ -72,6 +33,6 @@ server {
 - Difficulty multipliers: Easy (x1), Medium (x1.5), Hard (x2)
 
 ## Security Notes
-- The scores.json file should be writable by the Node.js process
-- Consider implementing rate limiting for production use
-- Add authentication if needed for score submission
+- Ensure your web server is properly configured
+- The scores.json file should be writable by PHP
+- Consider adding rate limiting for production use
