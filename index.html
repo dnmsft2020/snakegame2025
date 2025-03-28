@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Snake Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        .game-container {
+            text-align: center;
+        }
+        canvas {
+            border: 2px solid #333;
+            background: white;
+        }
+        #score {
+            font-size: 24px;
+            margin-top: 10px;
+        }
+        .controls {
+            margin: 10px 0;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 0 5px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .high-scores {
+            margin-top: 20px;
+            text-align: left;
+            max-width: 400px;
+        }
+        .username-input {
+            margin: 10px 0;
+        }
+        input {
+            padding: 5px;
+            font-size: 16px;
+        }
+        #highScoresList {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="username-input">
+            Username: <input type="text" id="username" value="Player">
+            <button id="randomNameBtn">Random Name</button>
+        </div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div id="score">Score: 0</div>
+        <div class="controls">
+            <button id="startBtn">Start</button>
+            <button id="pauseBtn">Pause</button>
+            <button id="restartBtn">Restart</button>
+        </div>
+        <div class="high-scores">
+            <h3>High Scores</h3>
+            <div id="highScoresList"></div>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const box = 20;
+        const canvasSize = 400;
+        
+        // Username generation arrays
+        const adjectives = ['Happy', 'Lucky', 'Speedy', 'Clever', 'Swift', 'Green', 'Blue', 'Red', 'Golden', 'Silver',
+                          'Brave', 'Mighty', 'Quick', 'Wise', 'Wild', 'Calm', 'Bright', 'Cool', 'Super', 'Ninja'];
+        const nouns = ['Snake', 'Star', 'Dragon', 'Tiger', 'Eagle', 'Panda', 'Bean', 'Warrior', 'Runner', 'Knight',
+                      'Phoenix', 'Wolf', 'Fox', 'Bear', 'Lion', 'Falcon', 'Hero', 'Legend', 'Master', 'Racer'];
+        
+        function generateRandomUsername() {
+            const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+            const noun = nouns[Math.floor(Math.random() * nouns.length)];
+            return `${adj}${noun}`;
+        }
+        
+        // Add event listener for random name button
+        document.getElementById('randomNameBtn').addEventListener('click', () => {
+            document.getElementById('username').value = generateRandomUsername();
+        });
+        
+        let snake = [{x: 10, y: 10}];
+        let food = {x: 15, y: 15};
+        let direction = 'right';
+        let score = 0;
+        let gameInterval;
+        let isPaused = false;
+        let isGameOver = false;
+        
+        // High scores
+        let highScores = JSON.parse(localStorage.getItem('snakeHighScores')) || [];
+        
+        function updateHighScoresList() {
+            const highScoresList = document.getElementById('highScoresList');
+            highScoresList.innerHTML = highScores
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 5)
+                .map((score, index) => `${index + 1}. ${score.username}: ${score.score}`)
+                .join('<br>');
+        }
+        
+        function saveScore() {
+            const username = document.getElementById('username').value || 'Player';
+            highScores.push({ username, score });
+            highScores.sort((a, b) => b.score - a.score);
+            highScores = highScores.slice(0, 5); // Keep only top 5 scores
+            localStorage.setItem('snakeHighScores', JSON.stringify(highScores));
+            updateHighScoresList();
+        }
+        
+        function drawBox(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * box, y * box, box - 1, box - 1);
+        }
+        
+        function generateFood() {
+            food = {
+                x: Math.floor(Math.random() * (canvasSize/box)),
+                y: Math.floor(Math.random() * (canvasSize/box))
+            };
+        }
+        
+        function update() {
+            if (isPaused || isGameOver) return;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvasSize, canvasSize);
+            
+            // Draw snake
+            snake.forEach((part, index) => {
+                drawBox(part.x, part.y, index === 0 ? '#4CAF50' : '#2E7D32');
+            });
+            
+            // Draw food
+            drawBox(food.x, food.y, 'red');
+            
+            // Move snake
+            let newHead = {...snake[0]};
+            
+            switch(direction) {
+                case 'right': newHead.x++; break;
+                case 'left': newHead.x--; break;
+                case 'up': newHead.y--; break;
+                case 'down': newHead.y++; break;
+            }
+            
+            // Check wall collision
+            if (newHead.x < 0 || newHead.x >= canvasSize/box || 
+                newHead.y < 0 || newHead.y >= canvasSize/box) {
+                gameOver();
+                return;
+            }
+            
+            // Check self collision
+            if (snake.some(part => part.x === newHead.x && part.y === newHead.y)) {
+                gameOver();
+                return;
+            }
+            
+            // Add new head
+            snake.unshift(newHead);
+            
+            // Check food collision
+            if (newHead.x === food.x && newHead.y === food.y) {
+                score += 10;
+                document.getElementById('score').textContent = 'Score: ' + score;
+                generateFood();
+            } else {
+                snake.pop();
+            }
+        }
+        
+        function gameOver() {
+            isGameOver = true;
+            clearInterval(gameInterval);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, canvasSize, canvasSize);
+            ctx.fillStyle = 'white';
+            ctx.font = '30px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Game Over!', canvasSize/2, canvasSize/2);
+            saveScore();
+        }
+        
+        function startGame() {
+            // Reset game state
+            snake = [{x: 10, y: 10}];
+            direction = 'right';
+            score = 0;
+            document.getElementById('score').textContent = 'Score: 0';
+            isGameOver = false;
+            isPaused = false;
+            generateFood();
+            
+            // Clear any existing interval
+            if (gameInterval) clearInterval(gameInterval);
+            
+            // Start new game interval
+            gameInterval = setInterval(update, 200);
+        }
+        
+        // Control handlers
+        document.addEventListener('keydown', (event) => {
+            if (isPaused || isGameOver) return;
+            
+            const key = event.key;
+            if (key === 'ArrowLeft' && direction !== 'right') direction = 'left';
+            if (key === 'ArrowRight' && direction !== 'left') direction = 'right';
+            if (key === 'ArrowUp' && direction !== 'down') direction = 'up';
+            if (key === 'ArrowDown' && direction !== 'up') direction = 'down';
+        });
+        
+        // Button handlers
+        document.getElementById('startBtn').addEventListener('click', () => {
+            if (isGameOver) startGame();
+            isPaused = false;
+        });
+        
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+            isPaused = !isPaused;
+            document.getElementById('pauseBtn').textContent = isPaused ? 'Resume' : 'Pause';
+        });
+        
+        document.getElementById('restartBtn').addEventListener('click', startGame);
+        
+        // Initialize high scores list
+        updateHighScoresList();
+        
+        // Start initial game
+        startGame();
+    </script>
+</body>
+</html>
